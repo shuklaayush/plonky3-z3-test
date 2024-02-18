@@ -1,16 +1,13 @@
 use core::fmt;
-use p3_field::{AbstractField, PrimeField64};
+use p3_field::PrimeField64;
 use std::{
     borrow::Borrow,
     hash::Hash,
-    iter::{Product, Sum},
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 use z3::{ast::*, *};
 use z3_sys::*;
-
-use crate::context::context;
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct Felt<'ctx, F: PrimeField64>(Int<'ctx>, PhantomData<F>);
@@ -35,6 +32,10 @@ impl<'ctx, F: PrimeField64> Felt<'ctx, F> {
     pub fn from_u64(ctx: &'ctx Context, u: u64) -> Self {
         assert!(u < F::ORDER_U64);
         Self::from_int(Int::from_u64(ctx, u))
+    }
+
+    pub fn from_bool(ctx: &'ctx Context, b: bool) -> Self {
+        Self::from_int(Int::from_u64(ctx, b as u64))
     }
 
     pub fn from_f(ctx: &'ctx Context, u: F) -> Self {
@@ -85,6 +86,19 @@ impl<'ctx, F: PrimeField64> Felt<'ctx, F> {
         let tmp = self.0.unary_minus();
         Self::from_int(tmp.modulo(&Int::from_u64(self.get_ctx(), F::ORDER_U64)))
     }
+
+    pub fn assert_zero(&self, solver: &Solver) {
+        let zero = Self::from_int(Int::from_u64(self.get_ctx(), 0));
+        solver.assert(&self._eq(&zero));
+    }
+
+    pub fn assert_eq(&self, solver: &Solver, other: &Self) {
+        solver.assert(&self._eq(&other));
+    }
+
+    pub fn assert_ne(&self, solver: &Solver, other: &Self) {
+        solver.assert(&self._eq(&other).not());
+    }
 }
 
 impl<'ctx, F: PrimeField64> Ast<'ctx> for Felt<'ctx, F> {
@@ -110,18 +124,6 @@ impl<'ctx, F: PrimeField64> fmt::Debug for Felt<'ctx, F> {
 impl<'ctx, F: PrimeField64> fmt::Display for Felt<'ctx, F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
-impl<'ctx, F: PrimeField64> Default for Felt<'ctx, F> {
-    fn default() -> Self {
-        Self::from_u64(context(), 0)
-    }
-}
-
-impl<'ctx, F: PrimeField64> From<F> for Felt<'ctx, F> {
-    fn from(value: F) -> Self {
-        Self::from_f(context(), value)
     }
 }
 
@@ -156,21 +158,6 @@ impl<'ctx, F: PrimeField64> AddAssign<Felt<'ctx, F>> for Felt<'ctx, F> {
     }
 }
 
-impl<'ctx, F: PrimeField64> Add<F> for Felt<'ctx, F> {
-    type Output = Felt<'ctx, F>;
-
-    fn add(self, other: F) -> Self::Output {
-        let ctx = self.get_ctx();
-        Felt::add(ctx, &[&self as &Felt<'ctx, F>, &Self::from_f(ctx, other)])
-    }
-}
-
-impl<'ctx, F: PrimeField64> Sum for Felt<'ctx, F> {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.reduce(|x, y| x + y).unwrap_or(Self::zero())
-    }
-}
-
 impl<'ctx, F: PrimeField64> Sub<Felt<'ctx, F>> for Felt<'ctx, F> {
     type Output = Felt<'ctx, F>;
 
@@ -199,15 +186,6 @@ impl<'ctx, F: PrimeField64> SubAssign<Felt<'ctx, F>> for Felt<'ctx, F> {
             self.get_ctx(),
             &[&self as &Felt<'ctx, F>, &other as &Felt<'ctx, F>],
         )
-    }
-}
-
-impl<'ctx, F: PrimeField64> Sub<F> for Felt<'ctx, F> {
-    type Output = Felt<'ctx, F>;
-
-    fn sub(self, other: F) -> Self::Output {
-        let ctx = self.get_ctx();
-        Felt::sub(ctx, &[&self as &Felt<'ctx, F>, &Self::from_f(ctx, other)])
     }
 }
 
@@ -242,83 +220,10 @@ impl<'ctx, F: PrimeField64> MulAssign<Felt<'ctx, F>> for Felt<'ctx, F> {
     }
 }
 
-impl<'ctx, F: PrimeField64> Mul<F> for Felt<'ctx, F> {
-    type Output = Felt<'ctx, F>;
-
-    fn mul(self, other: F) -> Self::Output {
-        let ctx = self.get_ctx();
-        Felt::mul(ctx, &[&self as &Felt<'ctx, F>, &Self::from_f(ctx, other)])
-    }
-}
-
-impl<'ctx, F: PrimeField64> Product for Felt<'ctx, F> {
-    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.reduce(|x, y| x * y).unwrap_or(Self::one())
-    }
-}
-
 impl<'ctx, F: PrimeField64> Neg for Felt<'ctx, F> {
     type Output = Felt<'ctx, F>;
 
     fn neg(self) -> Self::Output {
         self.unary_minus()
-    }
-}
-
-impl<'ctx, F: PrimeField64> AbstractField for Felt<'ctx, F> {
-    type F = F;
-
-    fn zero() -> Self {
-        Self::from_f(F::zero())
-    }
-    fn one() -> Self {
-        Self::from_f(F::one())
-    }
-    fn two() -> Self {
-        Self::from_f(F::two())
-    }
-    fn neg_one() -> Self {
-        Self::from_f(F::neg_one())
-    }
-
-    #[inline]
-    fn from_f(f: Self::F) -> Self {
-        f.into()
-    }
-
-    fn from_bool(b: bool) -> Self {
-        Self::from_f(F::from_bool(b))
-    }
-
-    fn from_canonical_u8(n: u8) -> Self {
-        Self::from_f(F::from_canonical_u8(n))
-    }
-
-    fn from_canonical_u16(n: u16) -> Self {
-        Self::from_f(F::from_canonical_u16(n))
-    }
-
-    fn from_canonical_u32(n: u32) -> Self {
-        Self::from_f(F::from_canonical_u32(n))
-    }
-
-    fn from_canonical_u64(n: u64) -> Self {
-        Self::from_f(F::from_canonical_u64(n))
-    }
-
-    fn from_canonical_usize(n: usize) -> Self {
-        Self::from_f(F::from_canonical_usize(n))
-    }
-
-    fn from_wrapped_u32(n: u32) -> Self {
-        Self::from_f(F::from_wrapped_u32(n))
-    }
-
-    fn from_wrapped_u64(n: u64) -> Self {
-        Self::from_f(F::from_wrapped_u64(n))
-    }
-
-    fn generator() -> Self {
-        Self::from_f(F::generator())
     }
 }

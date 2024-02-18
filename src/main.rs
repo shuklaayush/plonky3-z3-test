@@ -1,47 +1,19 @@
-mod check_constraints;
+mod check_unconstrained;
 mod context;
 mod field;
+mod round_flags_air;
 
-use context::context;
-use field::Felt;
-use p3_goldilocks::Goldilocks;
-use z3::{ast::*, *};
+use p3_baby_bear::BabyBear;
+use p3_uni_stark::check_constraints;
+use round_flags_air::{generate_trace_rows, KeccakAir};
 
-const NUM_ROUNDS: usize = 24;
+use crate::check_unconstrained::check_unconstrained;
 
-pub fn main() {
-    let ctx = context();
-    let solver = Solver::new(ctx);
+fn main() {
+    type Val = BabyBear;
 
-    let step_flags: [Felt<Goldilocks>; NUM_ROUNDS] = (0..NUM_ROUNDS)
-        .map(|i| Felt::new_const(&solver, format!("F[{i}]")))
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+    let trace = generate_trace_rows::<Val>();
 
-    let zero = Felt::from_u64(0);
-    let one = Felt::from_u64(1);
-    solver.assert(&(&step_flags[0] - &one)._eq(&zero));
-    for i in 1..NUM_ROUNDS {
-        solver.assert(&step_flags[i]._eq(&zero));
-    }
-
-    // Fill trace
-    // let mut trace = Vec::with_capacity(NUM_ROUNDS);
-    // trace.push(step_flags[0]._eq(&one).not());
-    // for i in 1..NUM_ROUNDS {
-    //     trace.push(step_flags[i]._eq(&zero).not());
-    // }
-    // solver.assert(&Bool::or(&ctx, &trace));
-
-    match solver.check() {
-        SatResult::Sat => {
-            let model = solver.get_model().unwrap();
-            for i in 0..NUM_ROUNDS {
-                print!("{} ", model.eval(&step_flags[i], true).unwrap());
-            }
-            println!();
-        }
-        _ => println!("No solution"),
-    }
+    check_constraints(&KeccakAir {}, &trace);
+    check_unconstrained(&KeccakAir {}, &trace)
 }
