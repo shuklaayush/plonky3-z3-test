@@ -45,9 +45,9 @@ where
         .values
         .iter()
         .zip(main.values.iter())
-        .map(|(var, val)| var._eq(&Felt::from_u64(&ctx, val.as_canonical_u64())).not())
+        .map(|(var, val)| var._eq(&Felt::from_u64(ctx, val.as_canonical_u64())).not())
         .collect::<Vec<_>>();
-    solver.assert(&Bool::or(&ctx, &solution));
+    solver.assert(&Bool::or(ctx, &solution));
 
     match solver.check() {
         SatResult::Sat => {

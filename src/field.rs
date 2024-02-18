@@ -21,8 +21,8 @@ impl<'ctx, F: PrimeField64> Felt<'ctx, F> {
         let ctx = solver.get_context();
         let x = Self::from_int(Int::new_const(ctx, name));
 
-        let zero = Int::from_u64(&ctx, 0);
-        let p = Int::from_u64(&ctx, F::ORDER_U64);
+        let zero = Int::from_u64(ctx, 0);
+        let p = Int::from_u64(ctx, F::ORDER_U64);
         solver.assert(&x.0.ge(&zero));
         solver.assert(&x.0.lt(&p));
 
@@ -93,11 +93,11 @@ impl<'ctx, F: PrimeField64> Felt<'ctx, F> {
     }
 
     pub fn assert_eq(&self, solver: &Solver, other: &Self) {
-        solver.assert(&self._eq(&other));
+        solver.assert(&self._eq(other));
     }
 
     pub fn assert_ne(&self, solver: &Solver, other: &Self) {
-        solver.assert(&self._eq(&other).not());
+        solver.assert(&self._eq(other).not());
     }
 }
 
