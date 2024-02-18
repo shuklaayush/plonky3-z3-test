@@ -20,6 +20,7 @@ pub fn generate_trace_rows<F: PrimeField64>() -> RowMajorMatrix<F> {
     assert_eq!(rows.len(), num_rows);
 
     for row in rows.chunks_mut(NUM_ROUNDS) {
+        // for row in rows[..NUM_ROUNDS].chunks_mut(NUM_ROUNDS) {
         generate_trace_rows_for_perm(row);
     }
 

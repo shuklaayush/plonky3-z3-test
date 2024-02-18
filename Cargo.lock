@@ -353,21 +353,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "p3-z3-test"
-version = "0.1.0"
-dependencies = [
- "p3-air",
- "p3-baby-bear",
- "p3-field",
- "p3-keccak-air",
- "p3-matrix",
- "p3-uni-stark",
- "p3-util",
- "z3",
- "z3-sys",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -378,6 +363,23 @@ name = "pkg-config"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
+
+[[package]]
+name = "plonky3-z3-test"
+version = "0.1.0"
+dependencies = [
+ "p3-air",
+ "p3-baby-bear",
+ "p3-field",
+ "p3-keccak-air",
+ "p3-matrix",
+ "p3-uni-stark",
+ "p3-util",
+ "rand",
+ "tracing",
+ "z3",
+ "z3-sys",
+]
 
 [[package]]
 name = "ppv-lite86"
